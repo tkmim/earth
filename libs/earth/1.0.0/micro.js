@@ -315,12 +315,44 @@ var µ = function() {
         return wd.toFixed(0) + "° @ " + formatScalar(wind[2], units);
     }
 
+function gzipd(xhr) {
+    return JSON.parse(pako.inflate(xhr.response, {to: 'string'}));
+}
+
+// extract suffixes from a file name
+// e.g., getSuffix('example.json.gz', ['gz', 'bz2']) => {'extension': 'json', 'compression': 'gz'}
+function getSuffix(filename, extCompression) {
+    var suf = [], fnameSplit = filename.split(".");
+    if (fnameSplit.length >= 2) {
+        suf.unshift(fnameSplit.pop());
+        if (_includes(extCompression, suf[0])) {
+           suf.unshift(fnameSplit.pop());
+        }
+    }
+    return {'extension': suf[0], 'compression': suf[1]};
+}
+
+function _includes(array, elem) {
+    if (!(array instanceof Array)) {array = [array];}
+    return array.indexOf(elem) >= 0;
+}
+
     /**
      * Returns a promise for a JSON resource (URL) fetched via XHR. If the load fails, the promise rejects with an
      * object describing the reason: {status: http-status-code, message: http-status-text, resource:}.
      */
     function loadJson(resource) {
         var d = when.defer();
+    if (getSuffix(resource, 'gz')['compression']) {
+        d3.xhr(resource).responseType("arraybuffer")
+        .response(gzipd).get(function(error, result) {
+            return error ?
+                !error.status ?
+                    d.reject({status: -1, message: "Cannot load resource: " + resource, resource: resource}) :
+                    d.reject({status: error.status, message: error.statusText, resource: resource}) :
+                d.resolve(result);
+        }) ;
+    }else{
         d3.json(resource, function(error, result) {
             return error ?
                 !error.status ?
@@ -328,6 +360,8 @@ var µ = function() {
                     d.reject({status: error.status, message: error.statusText, resource: resource}) :
                 d.resolve(result);
         });
+    }
+        console.log(d.promise);
         return d.promise;
     }
 
