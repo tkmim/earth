@@ -55,6 +55,12 @@ var products = function() {
         return [WEATHER_PATH, dir, file].join("/");
     }
 
+    function icon_invariant_1p0degPath(attr, type) {
+        var dir =  "current", stamp = dir
+        var file = [type, stamp, "surface", "level", "icon", "1.0"].filter(µ.isValue).join("-") + ".json.gz";
+        return [WEATHER_PATH, dir, file].join("/");
+    }
+
     function gfsDate(attr) {
         if (attr.date === "current") {
             // Construct the date from the current time, rounding down to the nearest three-hour block.
@@ -530,6 +536,7 @@ var products = function() {
                 });
             }
         },
+
         "precip": {
             matches: _.matches({param: "wind", overlayType: "precip"}),
             create: function(attr) {
@@ -572,6 +579,50 @@ var products = function() {
             }
         },
 
+
+        "orography": {
+            matches: _.matches({param: "wind", overlayType: "orography"}),
+            create: function(attr) {
+                return buildProduct({
+                    field: "scalar",
+                    type: "orography",
+                    description: localize({
+                        name: {en: "Orography", ja: "可降水量"},
+                        qualifier: ""
+                    }),
+                    paths: [icon_invariant_1p0degPath(attr, "orog")],
+                    date: gfsDate(attr),
+                    builder: function(file) {
+                        var record = file[0], data = record.data;
+                        return {
+                            header: record.header,
+                            interpolate: bilinearInterpolateScalar,
+                            data: function(i) {
+                                return data[i];
+                            }
+                        }
+                    },
+                    units: [
+                        {label: "m", conversion: function(x) { return x; }, precision: 1}
+                    ],
+                    scale: {
+                        bounds: [0, 7000],
+                        gradient: µ.segmentedColorScale([
+                                [0, [15, 4, 96]],
+                                [50, [30, 8, 180]],
+                                [100, [121, 102, 2]],
+                                [200, [118, 161, 66]],
+                                [400, [50, 102, 219]],
+                                [800, [19, 131, 193]],
+                                [1600, [59, 204, 227]],
+                                [6400, [241, 1, 45]],
+                                [8000, [243, 0, 241]]
+                        ])
+                    }
+                });
+            }
+        },
+        
         "currents": {
             matches: _.matches({param: "ocean", surface: "surface", level: "currents"}),
             create: function(attr) {
