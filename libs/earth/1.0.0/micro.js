@@ -11,7 +11,7 @@ var µ = function() {
 
     var τ = 2 * Math.PI;
     var H = 0.0000360;  // 0.0000360°φ ~= 4m
-    var DEFAULT_CONFIG = "current/wind/surface/level/orthographic";
+    var DEFAULT_CONFIG = "current/wind/surface/level/ft0/orthographic";
     var TOPOLOGY = isMobile() ? "/earth/data/earth-topo-mobile.json?v2" : "/earth/data/earth-topo.json?v2";
 
     /**
@@ -315,27 +315,32 @@ var µ = function() {
         return wd.toFixed(0) + "° @ " + formatScalar(wind[2], units);
     }
 
-function gzipd(xhr) {
-    return JSON.parse(pako.inflate(xhr.response, {to: 'string'}));
-}
-
-// extract suffixes from a file name
-// e.g., getSuffix('example.json.gz', ['gz', 'bz2']) => {'extension': 'json', 'compression': 'gz'}
-function getSuffix(filename, extCompression) {
-    var suf = [], fnameSplit = filename.split(".");
-    if (fnameSplit.length >= 2) {
-        suf.unshift(fnameSplit.pop());
-        if (_includes(extCompression, suf[0])) {
-           suf.unshift(fnameSplit.pop());
-        }
+    /**
+     * Parsing extracting gzip
+     * @param {*} xhr 
+     * @returns 
+     */
+    function gzipd(xhr) {
+        return JSON.parse(pako.inflate(xhr.response, {to: 'string'}));
     }
-    return {'extension': suf[0], 'compression': suf[1]};
-}
 
-function _includes(array, elem) {
-    if (!(array instanceof Array)) {array = [array];}
-    return array.indexOf(elem) >= 0;
-}
+    // extract suffixes from a file name
+    // e.g., getSuffix('example.json.gz', ['gz', 'bz2']) => {'extension': 'json', 'compression': 'gz'}
+    function getSuffix(filename, extCompression) {
+        var suf = [], fnameSplit = filename.split(".");
+        if (fnameSplit.length >= 2) {
+            suf.unshift(fnameSplit.pop());
+            if (_includes(extCompression, suf[0])) {
+            suf.unshift(fnameSplit.pop());
+            }
+        }
+        return {'extension': suf[0], 'compression': suf[1]};
+    }
+
+    function _includes(array, elem) {
+        if (!(array instanceof Array)) {array = [array];}
+        return array.indexOf(elem) >= 0;
+    }
 
     /**
      * Returns a promise for a JSON resource (URL) fetched via XHR. If the load fails, the promise rejects with an
@@ -547,8 +552,9 @@ function _includes(array, elem) {
      */
     function parse(hash, projectionNames, overlayTypes) {
         var option, result = {};
-        //             1        2        3          4          5            6      7      8    9
-        var tokens = /^(current|(\d{4})\/(\d{1,2})\/(\d{1,2})\/(\d{3,4})Z)\/(\w+)\/(\w+)\/(\w+)([\/].+)?/.exec(hash);
+        //             1        2        3          4          5            6      7      8        9               10
+        var tokens = /^(current|(\d{4})\/(\d{1,2})\/(\d{1,2})\/(\d{3,4})Z)\/(\w+)\/(\w+)\/(\w+)\/ft(\w+)([\/].+)?/.exec(hash);
+        console.log(tokens)
         if (tokens) {
             var date = tokens[1] === "current" ?
                 "current" :
@@ -557,6 +563,7 @@ function _includes(array, elem) {
             result = {
                 date: date,                  // "current" or "yyyy/mm/dd"
                 hour: hour,                  // "hhhh" or ""
+                step: tokens[9],
                 param: tokens[6],            // non-empty alphanumeric _
                 surface: tokens[7],          // non-empty alphanumeric _
                 level: tokens[8],            // non-empty alphanumeric _
@@ -566,7 +573,7 @@ function _includes(array, elem) {
                 overlayType: "default",
                 showGridPoints: false
             };
-            coalesce(tokens[9], "").split("/").forEach(function(segment) {
+            coalesce(tokens[10], "").split("/").forEach(function(segment) {
                 if ((option = /^(\w+)(=([\d\-.,]*))?$/.exec(segment))) {
                     if (projectionNames.has(option[1])) {
                         result.projection = option[1];                 // non-empty alphanumeric _
@@ -607,7 +614,8 @@ function _includes(array, elem) {
             var proj = [attr.projection, attr.orientation].filter(isTruthy).join("=");
             var ol = !isValue(attr.overlayType) || attr.overlayType === "default" ? "" : "overlay=" + attr.overlayType;
             var grid = attr.showGridPoints ? "grid=on" : "";
-            return [dir, attr.param, attr.surface, attr.level, ol, proj, grid].filter(isTruthy).join("/");
+            var step = "ft" + attr.step
+            return [dir, attr.param, attr.surface, attr.level, step, ol, proj, grid].filter(isTruthy).join("/");
         },
 
         /**

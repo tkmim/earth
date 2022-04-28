@@ -1,5 +1,6 @@
 /**
  * earth - a project to visualize global air data.
+ * earth.js : a main module for visualisation, navigation controol
  *
  * Copyright (c) 2014 Cameron Beccario
  * The MIT License - http://opensource.org/licenses/MIT
@@ -271,7 +272,18 @@
             log.debug("Download in progress--ignoring nav request.");
             return;
         }
-        var next = gridAgent.value().primaryGrid.navigate(step);
+
+        //var next = gridAgent.value().primaryGrid.navigate(step);
+        if (configuration.get("date") === "current" ) {
+            var next = gridAgent.value().primaryGrid.navigate(0);
+        }
+        //var next = new Date(configuration.get("date"));
+
+        configuration.save({step: Number(configuration.get("step")) + Number(step)})
+        if ( Number(configuration.get("step")) < 0) {
+            configuration.save({step: 0})     
+        }
+
         if (next) {
             configuration.save(µ.dateToConfig(next));
         }
@@ -504,6 +516,11 @@
                                 scalar = overlayInterpolate(λ, φ);
                             }
                             if (µ.isValue(scalar)) {
+                                if (scalar < scale.bounds[0]) {
+                                    scalar = scale.bounds[0];
+                                    } else if (scalar > scale.bounds[1]) {
+                                        scalar = scale.bounds[1];
+                                    } 
                                 color = scale.gradient(scalar, OVERLAY_ALPHA);
                             }
                         }
@@ -673,6 +690,7 @@
         if (grid) {
             // Draw color bar for reference.
             var colorBar = d3.select("#scale"), scale = grid.scale, bounds = scale.bounds;
+            console.log(bounds)
             var c = colorBar.node(), g = c.getContext("2d"), n = c.width - 1;
             for (var i = 0; i <= n; i++) {
                 var rgb = scale.gradient(µ.spread(i / n, bounds[0], bounds[1]), 1);
@@ -700,13 +718,27 @@
     function validityDate(grids) {
         // When the active layer is considered "current", use its time as now, otherwise use current time as
         // now (but rounded down to the nearest three-hour block).
-        var THREE_HOURS = 3 * HOUR;
+        var THREE_HOURS = 12 * HOUR;
         var now = grids ? grids.primaryGrid.date.getTime() : Math.floor(Date.now() / THREE_HOURS) * THREE_HOURS;
-        var parts = configuration.get("date").split("/");  // yyyy/mm/dd or "current"
-        var hhmm = configuration.get("hour");
-        return parts.length > 1 ?
-            Date.UTC(+parts[0], parts[1] - 1, +parts[2], +hhmm.substring(0, 2)) :
-            parts[0] === "current" ? now : null;
+
+        now = new Date(now).setUTCHours(0);
+        var validity = new Date(configuration.get("date") + " GMT+0");
+        validity.setHours( Number(validity.getHours()) + Number(configuration.get("step")));
+
+        //var parts = configuration.get("date").split("/");  // yyyy/mm/dd or "current"
+        //var hhmm = configuration.get("hour");
+        //return parts.length > 1 ?
+        //    Date.UTC(+parts[0], parts[1] - 1, +parts[2], +hhmm.substring(0, 2)) :
+        //    parts[0] === "current" ? now : null;
+        return configuration.get("date") === "current" ? now : validity
+    }
+
+    function initDate(grid) {
+        // When the active layer is considered "current", use its time as now, otherwise use current time as
+        // now (but rounded down to the nearest three-hour block).
+
+        var initt = new Date(configuration.get("date") + " GMT+0");
+        return configuration.get("date") === "current" ? validityDate(grid) : initt
     }
 
     /**
@@ -715,7 +747,10 @@
     function showDate(grids) {
         var date = new Date(validityDate(grids)), isLocal = d3.select("#data-date").classed("local");
         var formatted = isLocal ? µ.toLocalISO(date) : µ.toUTCISO(date);
+        var formatted2 = isLocal ? µ.toLocalISO(new Date(initDate(grids))) : µ.toUTCISO(new Date(initDate(grids)));
+
         d3.select("#data-date").text(formatted + " " + (isLocal ? "Local" : "UTC"));
+        d3.select("#init-date").text(formatted2 + " " + (isLocal ? "Local" : "UTC"));
         d3.select("#toggle-zone").text("⇄ " + (isLocal ? "UTC" : "Local"));
     }
 
@@ -934,7 +969,7 @@
             var changed = _.keys(configuration.changedAttributes()), rebuildRequired = false;
 
             // Build a new grid if any layer-related attributes have changed.
-            if (_.intersection(changed, ["date", "hour", "param", "surface", "level"]).length > 0) {
+            if (_.intersection(changed, ["date", "hour", "step", "param", "surface", "level"]).length > 0) {
                 rebuildRequired = true;
             }
             // Build a new grid if the new overlay type is different from the current one.
@@ -1016,8 +1051,8 @@
             switch (mode) {
                 case "wind":
                     d3.select("#nav-backward-more").attr("title", "-1 Day");
-                    d3.select("#nav-backward").attr("title", "-3 Hours");
-                    d3.select("#nav-forward").attr("title", "+3 Hours");
+                    d3.select("#nav-backward").attr("title", "-12 Hours");
+                    d3.select("#nav-forward").attr("title", "+12 Hours");
                     d3.select("#nav-forward-more").attr("title", "+1 Day");
                     break;
                 case "ocean":
@@ -1064,19 +1099,22 @@
 
         // Add logic to disable buttons that are incompatible with each other.
         configuration.on("change:overlayType", function(x, ot) {
-            d3.select("#surface-level").classed("disabled", ot === "air_density" || ot === "wind_power_density");
+            //d3.select("#surface-level").classed("disabled", ot === "air_density" || ot === "wind_power_density");
         });
         configuration.on("change:surface", function(x, s) {
-            d3.select("#overlay-air_density").classed("disabled", s === "surface");
-            d3.select("#overlay-wind_power_density").classed("disabled", s === "surface");
+            //d3.select("#overlay-air_density").classed("disabled", s === "surface");
+            //d3.select("#overlay-wind_power_density").classed("disabled", s === "surface");
         });
 
         // Add event handlers for the time navigation buttons.
-        d3.select("#nav-backward-more").on("click", navigate.bind(null, -10));
-        d3.select("#nav-forward-more" ).on("click", navigate.bind(null, +10));
-        d3.select("#nav-backward"     ).on("click", navigate.bind(null, -1));
-        d3.select("#nav-forward"      ).on("click", navigate.bind(null, +1));
-        d3.select("#nav-now").on("click", function() { configuration.save({date: "current", hour: ""}); });
+        d3.select("#nav-backward-more").on("click", navigate.bind(null, -24));
+        d3.select("#nav-forward-more" ).on("click", navigate.bind(null, +24));
+        d3.select("#nav-backward"     ).on("click", navigate.bind(null, -12));
+        d3.select("#nav-forward"      ).on("click", navigate.bind(null, +12));
+        d3.select("#nav-now").on("click", function() { configuration.save({date: "current", hour: "", step:0 }); 
+            d3.select("#nav-backward").classed("disabled");
+            d3.select("#nav-backward-more").classed("disabled");
+        });
 
         d3.select("#option-show-grid").on("click", function() {
             configuration.save({showGridPoints: !configuration.get("showGridPoints")});

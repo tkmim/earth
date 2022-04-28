@@ -23,7 +23,7 @@ var products = function() {
             paths: [],
             date: null,
             navigate: function(step) {
-                return gfsStep(this.date, step);
+                return stepTodate(this.date, step);
             },
             load: function(cancel) {
                 var me = this;
@@ -35,6 +35,7 @@ var products = function() {
     }
 
     /**
+     * Making a gfs json filename 
      * @param attr
      * @param {String} type
      * @param {String?} surface
@@ -44,6 +45,13 @@ var products = function() {
     function gfs1p0degPath(attr, type, surface, level) {
         var dir = attr.date, stamp = dir === "current" ? "current" : attr.hour;
         var file = [stamp, type, surface, level, "gfs", "1.0"].filter(µ.isValue).join("-") + ".json.gz";
+        return [WEATHER_PATH, dir, file].join("/");
+    }
+
+    function gfs1p0degPath(attr, type, surface, level) {
+        console.log('gfs1p',attr)
+        var dir = attr.date === "current" ? "current" : attr.date + "/00", stamp = dir === "current" ? "current" : "ft" + String(attr.step).padStart(3, '0');
+        var file = [type, stamp,surface, level, "icon", "1.0"].filter(µ.isValue).join("-") + ".json.gz";
         return [WEATHER_PATH, dir, file].join("/");
     }
 
@@ -59,11 +67,12 @@ var products = function() {
 
     /**
      * Returns a date for the chronologically next or previous GFS data layer. How far forward or backward in time
-     * to jump is determined by the step. Steps of ±1 move in 3-hour jumps, and steps of ±10 move in 24-hour jumps.
+     * to jump is determined by the step. 
      */
-    function gfsStep(date, step) {
-        var offset = (step > 1 ? 8 : step < -1 ? -8 : step) * 3, adjusted = new Date(date);
-        adjusted.setHours(adjusted.getHours() + offset);
+    function stepTodate(date, step) {
+        var offset = step, adjusted = new Date(date);
+        console.log(offset)
+        //adjusted.setHours(adjusted.getHours() + offset);
         return adjusted;
     }
 
@@ -87,6 +96,12 @@ var products = function() {
 
     function describeSurfaceJa(attr) {
         return attr.surface === "surface" ? "地上" : µ.capitalize(attr.level);
+    }
+
+    function getminmax(file) {
+        var record = file[0], data = record.data;   
+        console.log(Math.min(data), Math.max(data))                
+        return [Math.min(data), Math.max(data)];
     }
 
     /**
@@ -158,7 +173,7 @@ var products = function() {
                         name: {en: "Temp", ja: "気温"},
                         qualifier: {en: " @ " + describeSurface(attr), ja: " @ " + describeSurfaceJa(attr)}
                     }),
-                    paths: [gfs1p0degPath(attr, "temp", attr.surface, attr.level)],
+                    paths: [gfs1p0degPath(attr, "t", attr.surface, attr.level)],
                     date: gfsDate(attr),
                     builder: function(file) {
                         var record = file[0], data = record.data;
@@ -171,9 +186,9 @@ var products = function() {
                         }
                     },
                     units: [
+                        {label: "K",  conversion: function(x) { return x; },                precision: 1},
                         {label: "°C", conversion: function(x) { return x - 273.15; },       precision: 1},
-                        {label: "°F", conversion: function(x) { return x * 9/5 - 459.67; }, precision: 1},
-                        {label: "K",  conversion: function(x) { return x; },                precision: 1}
+                        {label: "°F", conversion: function(x) { return x * 9/5 - 459.67; }, precision: 1}
                     ],
                     scale: {
                         bounds: [193, 328],
@@ -221,6 +236,76 @@ var products = function() {
                     },
                     units: [
                         {label: "%", conversion: function(x) { return x; }, precision: 0}
+                    ],
+                    scale: {
+                        bounds: [0, 100],
+                        gradient: function(v, a) {
+                            return µ.sinebowColor(Math.min(v, 100) / 100, a);
+                        }
+                    }
+                });
+            }
+        },
+
+        "specific_humidity": {
+            matches: _.matches({param: "wind", overlayType: "specific_humidity"}),
+            create: function(attr) {
+                return buildProduct({
+                    field: "scalar",
+                    type: "specific_humidity",
+                    description: localize({
+                        name: {en: "Specific Humidity", ja: "絶対湿度"},
+                        qualifier: {en: " @ " + describeSurface(attr), ja: " @ " + describeSurfaceJa(attr)}
+                    }),
+                    paths: [gfs1p0degPath(attr, "q", attr.surface, attr.level)],
+                    date: gfsDate(attr),
+                    builder: function(file) {
+                        var record = file[0], data = record.data;                   
+                        return {
+                            header: record.header,
+                            interpolate: bilinearInterpolateScalar,
+                            data: function(i) {
+                                return data[i] * 10000;
+                            }
+                        };
+                    },
+                    units: [
+                        {label: "10^-4 kg/kg", conversion: function(x) { return x; }, precision: 2}
+                    ],
+                    scale: {
+                        bounds: [0, 100],
+                        gradient: function(v, a) {
+                            return µ.sinebowColor(Math.min(v, 100) / 100, a);
+                        }
+                    }
+                });
+            }
+        },
+
+        "gph": {
+            matches: _.matches({param: "wind", overlayType: "gph"}),
+            create: function(attr) {
+                return buildProduct({
+                    field: "scalar",
+                    type: "gph",
+                    description: localize({
+                        name: {en: "Geopotential height", ja: "Gph"},
+                        qualifier: {en: " @ " + describeSurface(attr), ja: " @ " + describeSurfaceJa(attr)}
+                    }),
+                    paths: [gfs1p0degPath(attr, "gh", attr.surface, attr.level)],
+                    date: gfsDate(attr),
+                    builder: function(file) {
+                        var record = file[0], data = record.data;                   
+                        return {
+                            header: record.header,
+                            interpolate: bilinearInterpolateScalar,
+                            data: function(i) {
+                                return data[i];
+                            }
+                        };
+                    },
+                    units: [
+                        {label: "m", conversion: function(x) { return x; }, precision: 1}
                     ],
                     scale: {
                         bounds: [0, 100],
@@ -410,7 +495,9 @@ var products = function() {
                         name: {en: "Mean Sea Level Pressure", ja: "海面更正気圧"},
                         qualifier: ""
                     }),
-                    paths: [gfs1p0degPath(attr, "mean_sea_level_pressure")],
+                    // Always surface level
+                    //paths: [gfs1p0degPath(attr, "msl", attr.surface, attr.level)],
+                    paths: [gfs1p0degPath(attr, "msl", 'surface', 'level')],
                     date: gfsDate(attr),
                     builder: function(file) {
                         var record = file[0], data = record.data;
@@ -428,17 +515,58 @@ var products = function() {
                         {label: "inHg", conversion: function(x) { return x / 3386.389; }, precision: 1}
                     ],
                     scale: {
-                        bounds: [92000, 105000],
+                        bounds: [95000, 105000],
                         gradient: µ.segmentedColorScale([
-                            [92000, [40, 0, 0]],
-                            [95000, [187, 60, 31]],
-                            [96500, [137, 32, 30]],
-                            [98000, [16, 1, 43]],
+                            [95000, [40, 0, 0]],
+                            [97500, [187, 60, 31]],
+                            [99000, [137, 32, 30]],
+                            [99500, [16, 1, 43]],
                             [100500, [36, 1, 93]],
                             [101300, [241, 254, 18]],
-                            [103000, [228, 246, 223]],
+                            [102500, [228, 246, 223]],
                             [105000, [255, 255, 255]]
                         ])
+                    }
+                });
+            }
+        },
+        "precip": {
+            matches: _.matches({param: "wind", overlayType: "precip"}),
+            create: function(attr) {
+                return buildProduct({
+                    field: "scalar",
+                    type: "precip",
+                    description: localize({
+                        name: {en: "Precipitation", ja: "可降水量"},
+                        qualifier: ""
+                    }),
+                    paths: [gfs1p0degPath(attr, "tp", 'surface', 'level')],
+                    date: gfsDate(attr),
+                    builder: function(file) {
+                        var record = file[0], data = record.data;
+                        return {
+                            header: record.header,
+                            interpolate: bilinearInterpolateScalar,
+                            data: function(i) {
+                                return data[i];
+                            }
+                        }
+                    },
+                    units: [
+                        {label: "mm", conversion: function(x) { return x; }, precision: 3}
+                    ],
+                    scale: {
+                        bounds: [0, 70],
+                        gradient:
+                            µ.segmentedColorScale([
+                                [0, [230, 165, 30]],
+                                [10, [120, 100, 95]],
+                                [20, [40, 44, 92]],
+                                [30, [21, 13, 193]],
+                                [40, [75, 63, 235]],
+                                [60, [25, 255, 255]],
+                                [70, [150, 255, 255]]
+                            ])
                     }
                 });
             }

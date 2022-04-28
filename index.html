@@ -18,8 +18,11 @@
     <link rel="apple-touch-icon" sizes="152x152" href="./ipad-icon.png"/>
     <link rel="stylesheet" type="text/css" href="./styles/styles.css"/>
 
+    <!--
     <link rel="alternate" hreflang="x-default" href="http://earth.nullschool.net/"/>
-    <link rel="alternate" hreflang="ja" href="http://earth.nullschool.net/jp/"/>
+    <link rel="alternate" hreflang="ja" href="http://earth.nullschool.net/jp/"/> 
+    -->
+
 </head>
 <body data-lang="en">
 
@@ -60,13 +63,16 @@
         </p>
 
         <div id="menu" class="invisible">
-            <p>Date | <span
+            <p>Valid | <span
                 id="data-date" class="local"></span> <span
                 id="toggle-zone" class="text-button"></span>
             </p>
+            <p>Init | <span
+                id="init-date" class="local"></span> 
+            </p>
             <p>Data | <span id="data-layer"></span></p>
-            <p><span id="scale-label">Scale | </span><canvas id="scale"></canvas></p>
             <p>Source | <span id="data-center"></span></p>
+            <p><span id="scale-label">Scale | </span><canvas id="scale"></canvas></p>
             <p>Control | <span
                 class="text-button" id="nav-now" title="Current Conditions">Now</span><span
                 class="text-button" id="nav-backward-more"> « </span> – <span
@@ -76,31 +82,30 @@
                 class="text-button" id="show-location" title="Current Position">〖◯〗</span><span
                 class="text-button" id="option-show-grid" title="Toggle Grid">Grid</span>
             </p>
-            <p>Mode | <span
+            <!--<p>Mode | <span
                 class="text-button" id="wind-mode-enable">Air</span> – <span
                 class="text-button" id="ocean-mode-enable">Ocean</span>
-            </p>
-            <p class="wind-mode">Height | <span
+            </p>-->
+            <p class="wind-mode">Level | <span
                 class="surface text-button" id="surface-level" title="Surface">Sfc</span> – <span
                 class="surface text-button" id="isobaric-1000hPa">1000</span> – <span
                 class="surface text-button" id="isobaric-850hPa">850</span> – <span
                 class="surface text-button" id="isobaric-700hPa">700</span> – <span
                 class="surface text-button" id="isobaric-500hPa">500</span> – <span
                 class="surface text-button" id="isobaric-250hPa">250</span> – <span
-                class="surface text-button" id="isobaric-70hPa">70</span> – <span
-                class="surface text-button" id="isobaric-10hPa">10</span> hPa
+                class="surface text-button" id="isobaric-50hPa">50</span> hPa
             </p>
             <p class="wind-mode">Overlay | <span
                 class="text-button" id="overlay-off">None</span> – <span
                 class="text-button" id="overlay-wind" title="Wind Speed">Wind</span> – <span
                 class="text-button" id="overlay-temp" title="Temperature">Temp</span> – <span
-                class="text-button" id="overlay-relative_humidity" title="Relative Humidity">RH</span> – <span
-                class="text-button" id="overlay-air_density" title="Air Density">AD</span> – <span
-                class="text-button" id="overlay-wind_power_density" title="Wind Power Density">WPD</span>
+                class="text-button" id="overlay-specific_humidity" title="Specific Humidity">QV</span> - <span
+                class="text-button" id="overlay-gph" title="Geopotential Height">GH</span>
+                <!--<span
+                class="text-button" id="overlay-relative_humidity" title="Relative Humidity">RH</span> -->
             </p>
             <p class="wind-mode"><span style="visibility:hidden">Overlay</span> | <span
-                class="text-button" id="overlay-total_precipitable_water" title="Total Precipitable Water">TPW</span> – <span
-                class="text-button" id="overlay-total_cloud_water" title="Total Cloud Water">TCW</span> – <span
+                class="text-button" id="overlay-precip" title="Precipitation">Precip</span> – <span
                 class="text-button" id="overlay-mean_sea_level_pressure" title="Mean Sea Level Pressure">MSLP</span>
             </p>
             <p class="ocean-mode invisible">Animate | <span
@@ -122,11 +127,12 @@
                 class="proj text-button" id="winkel3" title="Winkel Tripel">W3</span>
             </p>
             <!--<p>免責事項 | 正確な情報を提供するためのものではありません</p>-->
-            <p id="lang"><a href="/jp" class="internal-link">日本語</a></p>
+            <!--<p id="lang"><a href="/jp" class="internal-link">日本語</a></p>-->            
+            <p style="font-size: 1.25rem; float: right; padding-top: 0.5rem;">
+            codes by <a href="https://github.com/cambecc/earth">github.com/cambecc/earth</a> 
+            </p>
             <p>
                 <a href="about.html" class="internal-link">about</a>
-                <a href="https://www.facebook.com/EarthWindMap" class="social-icon" title="Facebook">&#xe027;</a>
-                <a href="https://twitter.com/cambecc" class="social-icon" title="Twitter">&#xe086;</a>
             </p>
         </div>
     </div>
