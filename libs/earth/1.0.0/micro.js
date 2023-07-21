@@ -11,7 +11,8 @@ var µ = function() {
 
     var τ = 2 * Math.PI;
     var H = 0.0000360;  // 0.0000360°φ ~= 4m
-    var DEFAULT_CONFIG = "current/wind/surface/level/ft0/orthographic";
+    //var DEFAULT_HASH = "current/wind/surface/level/ft0/orthographic";
+    var DEFAULT_HASH = "2022/04/01/000Z/wind/surface/level/ft0/orthographic=11.582,48.135,400";
     var TOPOLOGY = isMobile() ? "/earth/data/earth-topo-mobile.json?v2" : "/earth/data/earth-topo.json?v2";
 
     /**
@@ -551,14 +552,14 @@ var µ = function() {
      * @returns {Object} the result of the parse.
      */
     function parse(hash, projectionNames, overlayTypes) {
+        console.log(hash)
         var option, result = {};
         //             1        2        3          4          5            6      7      8        9               10
-        var tokens = /^(current|(\d{4})\/(\d{1,2})\/(\d{1,2})\/(\d{3,4})Z)\/(\w+)\/(\w+)\/(\w+)\/ft(\w+)([\/].+)?/.exec(hash);
+        //             1        2        3          4          5            6      7      8        9               10
+        var tokens = /((\d{4})\/(\d{1,2})\/(\d{1,2})\/(\d{3,4})Z)\/(\w+)\/(\w+)\/(\w+)\/ft(\w+)([\/].+)?/.exec(hash);
         console.log(tokens)
         if (tokens) {
-            var date = tokens[1] === "current" ?
-                "current" :
-                tokens[2] + "/" + zeroPad(tokens[3], 2) + "/" + zeroPad(tokens[4], 2);
+            var date = tokens[2] + "/" + zeroPad(tokens[3], 2) + "/" + zeroPad(tokens[4], 2);
             var hour = isValue(tokens[5]) ? zeroPad(tokens[5], 4) : "";
             result = {
                 date: date,                  // "current" or "yyyy/mm/dd"
@@ -568,7 +569,7 @@ var µ = function() {
                 surface: tokens[7],          // non-empty alphanumeric _
                 level: tokens[8],            // non-empty alphanumeric _
                 projection: "orthographic",
-                orientation: "",
+                orientation: "11.582,48.135,120",
                 topology: TOPOLOGY,
                 overlayType: "default",
                 showGridPoints: false
@@ -610,7 +611,7 @@ var µ = function() {
          */
         toHash: function() {
             var attr = this.attributes;
-            var dir = attr.date === "current" ? "current" : attr.date + "/" + attr.hour + "Z";
+            var dir = attr.date + "/" + attr.hour + "Z";
             var proj = [attr.projection, attr.orientation].filter(isTruthy).join("=");
             var ol = !isValue(attr.overlayType) || attr.overlayType === "default" ? "" : "overlay=" + attr.overlayType;
             var grid = attr.showGridPoints ? "grid=on" : "";
@@ -630,7 +631,7 @@ var µ = function() {
                         return;
                     }
                     model.set(parse(
-                        window.location.hash.substr(1) || DEFAULT_CONFIG,
+                        window.location.hash.substr(1) || DEFAULT_HASH,
                         model._projectionNames,
                         model._overlayTypes));
                     break;

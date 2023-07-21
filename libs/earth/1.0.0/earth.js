@@ -2,10 +2,14 @@
  * earth - a project to visualize global air data.
  * earth.js : a main module for visualisation, navigation controol
  *
+ * Copyright (c) 2022 Takumi Matsunobu
+ * The MIT License - http://opensource.org/licenses/MIT 
+ * 
+ * The major design pattern of this plugin was abstracted from Cameron Beccario's project 'earth', which is subject to the same license. 
+ * Here is the original copyright notice for earth:
  * Copyright (c) 2014 Cameron Beccario
- * The MIT License - http://opensource.org/licenses/MIT
- *
  * https://github.com/cambecc/earth
+ * 
  */
 (function() {
     "use strict";
@@ -710,6 +714,8 @@
         }
     }
 
+
+
     /**
      * Extract the date the grids are valid, or the current date if no grid is available.
      * UNDONE: if the grids hold unloaded products, then the date can be extracted from them.
@@ -717,7 +723,7 @@
      */
     function validityDate(grids) {
         // When the active layer is considered "current", use its time as now, otherwise use current time as
-        // now (but rounded down to the nearest three-hour block).
+        // now (but rounded down to the nearest twelve-hour block).
         var THREE_HOURS = 12 * HOUR;
         var now = grids ? grids.primaryGrid.date.getTime() : Math.floor(Date.now() / THREE_HOURS) * THREE_HOURS;
 
@@ -749,8 +755,12 @@
         var formatted = isLocal ? µ.toLocalISO(date) : µ.toUTCISO(date);
         var formatted2 = isLocal ? µ.toLocalISO(new Date(initDate(grids))) : µ.toUTCISO(new Date(initDate(grids)));
 
-        d3.select("#data-date").text(formatted + " " + (isLocal ? "Local" : "UTC"));
-        d3.select("#init-date").text(formatted2 + " " + (isLocal ? "Local" : "UTC"));
+        //var diffSecond = Math.floor(diffTime / (1000));
+        var forecast_time = (new Date(validityDate(grids))).getTime() - (new Date(initDate(grids))).getTime()
+        forecast_time = Math.floor(forecast_time / (1000 * 60 * 60))
+
+        d3.select("#data-date").text(formatted + " " +  (isLocal ? "Local" : "UTC"));
+        d3.select("#init-date").text(formatted2 + " " + (isLocal ? "Local" : "UTC") + " FT+"+ forecast_time + "h");
         d3.select("#toggle-zone").text("⇄ " + (isLocal ? "UTC" : "Local"));
     }
 
@@ -1111,7 +1121,9 @@
         d3.select("#nav-forward-more" ).on("click", navigate.bind(null, +24));
         d3.select("#nav-backward"     ).on("click", navigate.bind(null, -12));
         d3.select("#nav-forward"      ).on("click", navigate.bind(null, +12));
-        d3.select("#nav-now").on("click", function() { configuration.save({date: "current", hour: "", step:0 }); 
+        d3.select("#nav-now").on("click", function() { 
+            configuration.save({date: "2021/07/24", hour: "000", step:0 }); 
+            // Disable backward moving buttons 
             d3.select("#nav-backward").classed("disabled");
             d3.select("#nav-backward-more").classed("disabled");
         });
